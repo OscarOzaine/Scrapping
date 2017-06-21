@@ -6,6 +6,8 @@ from scrapy.linkextractor import LinkExtractor
 from scrapy.spiders import Rule, CrawlSpider
 from items import DatabloggerScraperItem
 from scrapy.http import HtmlResponse
+import string
+
 
 class DiputadosSpider(scrapy.Spider):
     name = "diputados"
@@ -36,6 +38,8 @@ class DiputadosSpider(scrapy.Spider):
 
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
+            #yield scrapy.Request(url=url, callback=self.parse_dir_contents)
+            
     
     general_info = {'additional_info': [], 'basic_info': {}}
 
@@ -51,7 +55,7 @@ class DiputadosSpider(scrapy.Spider):
                 state = tds.css('td.textoNegro').extract()
 
                 if len(name) > 0:
-                    data.append(name[0])
+                    data.append(name[0].replace("Dip. ", ""))
                 elif len(state) > 0 and len(data) > 0:
                     data.append(state[0])
 
@@ -102,7 +106,7 @@ class DiputadosSpider(scrapy.Spider):
 
                     
                     # Return all the found items
-                    self.general_info['basic_info']['name'] = data[0]
+                    self.general_info['basic_info']['name'] = string.replace(data[0], "Dip. ", "")
                     self.general_info['basic_info']['state'] = data[1]
                     
                     '''
@@ -115,10 +119,6 @@ class DiputadosSpider(scrapy.Spider):
                     '''
                     data = []
                     
-
-
-
-                
                 #print name
         return
 
@@ -126,7 +126,6 @@ class DiputadosSpider(scrapy.Spider):
         print 'response'
         x = 0
         
-
         for table in response.css('table'):
             if x == 0:
                 for tds in table.css('td'):
@@ -139,7 +138,29 @@ class DiputadosSpider(scrapy.Spider):
                         title = None
                         for s in soup.find_all('span'):
                             title = s.text
+                            title = string.replace(title, "Dip. ", "")
                             self.general_info['basic_info']['name'] = title.strip()
+
+                    text = tds.css('td[width="150"]').extract()
+                    
+                    if len(text) > 0:
+                        soup = bs(text[0])
+                        images = None
+                        images = [img['src'] for img in soup.findAll('img')]
+                        if len(images) > 0:
+                            imageurl = images[0]
+                            self.general_info['basic_info']['party_image'] = 'http://sitl.diputados.gob.mx/' + imageurl
+
+                    text = tds.css('td[width="180"]').extract()
+                    
+                    if len(text) > 0:
+                        soup = bs(text[0])
+                        images = None
+                        images = [img['src'] for img in soup.findAll('img')]
+                        if len(images) > 0:
+                            imageurl = images[0]
+                            self.general_info['basic_info']['profile_image'] = 'http://sitl.diputados.gob.mx/LXI_leg/' + imageurl
+
             elif x == 1:
                 for tds in table.css('td'):
                     text = tds.css('td.Estilo51').extract()
@@ -177,6 +198,8 @@ class DiputadosSpider(scrapy.Spider):
                             elif ii == 2:
                                 information.append(txt)
                                 #print information
+                                #information[1] = string.replace(information[1], "Dip. ", "")
+
                                 self.general_info['basic_info'][information[0]] = information[1]
                                 information = []
                                 ii = 1
@@ -196,6 +219,7 @@ class DiputadosSpider(scrapy.Spider):
                             txt = txt.strip().lstrip().rstrip()
                             txt = txt.split(':')
                             if len(txt) == 2:
+                                #txt[1] = string.replace(txt[1], "Dip. ", "")
                                 self.general_info['basic_info'][txt[0].strip()] = txt[1].strip()
                         
                     '''
